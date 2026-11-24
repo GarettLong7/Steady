@@ -1,0 +1,102 @@
+<%- include('partials/layout') %>
+<section class="intro"><h1>Settings</h1><p class="muted">Manage your daily habits, privacy, and data.</p></section>
+<div class="two-column settings-grid">
+  <section class="panel">
+    <h2>Daily habits</h2>
+    <p class="muted">New enabled habits are available today according to their schedules. Changes to existing scheduled habits generally apply on the next local day.</p>
+    <% for (const [index, habit] of habits.entries()) { %>
+      <details class="habit-setting">
+        <summary><strong><%= habit.name %></strong> <span class="muted"><%= habit.active ? habit.minutes + ' min' : 'Disabled' %></span></summary>
+        <form method="post" class="form-stack section-gap" data-action="/api/habits" data-id="<%= habit.id %>" data-reload>
+          <%- include('partials/habit-fields', { habit }) %>
+          <div class="actions"><button class="button primary">Save habit</button><span class="status" role="status" data-status></span></div>
+        </form>
+        <form method="post" class="actions section-gap" data-action="/api/habits/reorder" data-id="<%= habit.id %>" data-reload>
+          <button class="button compact" name="direction" value="up" <%= index === 0 ? 'disabled' : '' %>>Move up</button>
+          <button class="button compact" name="direction" value="down" <%= index === habits.length - 1 ? 'disabled' : '' %>>Move down</button>
+          <span class="status" role="status" data-status></span>
+        </form>
+        <form method="post" class="actions section-gap" data-action="/api/habits" data-method="DELETE" data-id="<%= habit.id %>" data-confirm="Delete this habit? Existing check-offs and past records will be kept." data-reload>
+          <button type="submit" class="button compact danger">Delete habit</button>
+          <span class="status" role="status" data-status></span>
+        </form>
+      </details>
+    <% } %>
+    <details class="habit-setting">
+      <summary><strong>Add a habit</strong></summary>
+      <form method="post" class="form-stack section-gap" data-action="/api/habits" data-reload>
+        <%- include('partials/habit-fields', { habit: { name: '', description: '', minutes: 5, active: 1 } }) %>
+        <div class="actions"><button class="button primary">Create habit</button><span class="status" role="status" data-status></span></div>
+      </form>
+    </details>
+    <form method="post" class="section-gap" data-action="/api/habits/defaults" data-confirm="Enable the four default habits and disable custom habits for upcoming days?" data-reload>
+      <button class="button">Restore default habits</button> <span class="status" role="status" data-status></span>
+    </form>
+  </section>
+  <div class="sidebar">
+    <section class="panel">
+      <h2>Preferences</h2>
+      <form method="post" class="form-stack" data-action="/api/settings" data-method="PUT" data-reload>
+        <label>Timezone<input class="field" name="timezone" maxlength="100" required value="<%= settings.timezone %>" list="zones"></label>
+        <datalist id="zones"><% for (const zone of Intl.supportedValuesOf('timeZone')) { %><option value="<%= zone %>"><% } %></datalist>
+        <label>Lock after idle minutes<input class="field" name="lock" type="number" min="1" max="120" required value="<%= settings.lock %>"></label>
+        <label>Preferred reminder time <span class="muted">(optional)</span><input class="field" name="reminder" type="time" value="<%= settings.reminder %>"></label>
+        <label>Encrypted backup reminder<select class="field" name="backupInterval">
+          <% for (const interval of [7,14,30,0]) { %><option value="<%= interval %>" <%= (settings.backupInterval ?? 14) === interval ? 'selected' : '' %>>
+            <%= interval ? 'Every ' + interval + ' days' : 'Disabled' %></option><% } %>
+        </select></label>
+        <p class="muted small">Steady saves this preference for reference. Set an alarm on your device if you want a notification.</p>
+        <div class="actions"><button class="button primary">Save preferences</button><span class="status" role="status" data-status></span></div>
+      </form>
+    </section>
+    <section class="panel">
+      <h2>Master password</h2>
+      <p class="muted">Keep your password somewhere safe. Steady cannot recover it for you.</p>
+      <form method="post" class="form-stack" data-action="/api/password" data-reset>
+        <%- include('partials/password', { id: 'change-current-password', label: 'Current master password', name: 'password', autocomplete: 'current-password' }) %>
+        <%- include('partials/password', { id: 'change-new-password', label: 'New master password', name: 'next', autocomplete: 'new-password', minLength: 12 }) %>
+        <%- include('partials/password', { id: 'change-confirm-password', label: 'Confirm new password', name: 'confirmation', autocomplete: 'new-password', minLength: 12 }) %>
+        <div class="actions"><button class="button">Change password</button><span class="status" role="status" data-status></span></div>
+      </form>
+    </section>
+  </div>
+</div>
+<section class="panel section-gap">
+  <h2>Data and backups</h2>
+  <p class="muted small"><%= lastBackupDate ? 'Last encrypted backup generated ' + dateLabel(lastBackupDate) + '.' : 'No successful backup generation recorded for this data.' %>
+    <% if (backupStatus.result === 'failed') { %>The last generation attempt failed.
+    <% } else if (backupStatus.result === 'generated') { %>The last generation attempt succeeded.<% } %></p>
+  <% if (backupDue) { %><p class="muted small">It may be time for an encrypted backup.</p><% } %>
+  <p class="muted small">Steady can verify generation on this computer. Check your Downloads or backup location to confirm you retained the file.</p>
+  <p><a href="#encrypted-backup" data-open-backup>Create encrypted backup</a></p>
+  <details class="habit-setting" id="encrypted-backup">
+    <summary><strong>Create encrypted backup</strong></summary>
+    <p class="muted section-gap">Choose a backup password and keep it somewhere safe. You’ll need it to open this file on any computer.</p>
+    <form method="post" class="form-stack" data-action="/api/backup" data-download="steady-<%= today %>.steady" data-reset>
+      <%- include('partials/password', { id: 'backup-current-password', label: 'Current master password', name: 'password', autocomplete: 'current-password' }) %>
+      <%- include('partials/password', { id: 'backup-password', label: 'Backup password', name: 'backupPassword', autocomplete: 'new-password', minLength: 12 }) %>
+      <%- include('partials/password', { id: 'backup-confirm-password', label: 'Confirm backup password', name: 'backupConfirmation', autocomplete: 'new-password', minLength: 12 }) %>
+      <div class="actions"><button class="button primary">Download encrypted backup</button><span class="status" role="status" data-status></span></div>
+    </form>
+  </details>
+  <details class="habit-setting">
+    <summary><strong>Restore encrypted backup</strong></summary>
+    <p class="muted section-gap">Restoring replaces habits, tracking, journal entries, moods, challenges, and preferences. Your current master password will still unlock Steady.</p>
+    <form method="post" class="form-stack" data-action="/api/restore" data-confirm="Replace all current tracking and journal data with this backup?" data-reset>
+      <label>Steady backup file<input class="field" name="file" type="file" accept=".steady,application/json" required></label>
+      <%- include('partials/password', { id: 'restore-current-password', label: 'Current master password', name: 'password', autocomplete: 'current-password' }) %>
+      <%- include('partials/password', { id: 'restore-backup-password', label: 'Backup password', name: 'backupPassword', autocomplete: 'off' }) %>
+      <div class="actions"><button class="button danger">Restore backup</button><span class="status" role="status" data-status></span></div>
+    </form>
+  </details>
+  <details class="habit-setting">
+    <summary><strong>Export writing as Markdown</strong></summary>
+    <p class="notice section-gap">Markdown is unencrypted. Anyone with access to the downloaded file can read it.</p>
+    <form method="post" class="form-stack" data-action="/api/markdown" data-confirm="Download an unencrypted copy of your journal?" data-download="steady-journal.md" data-reset>
+      <%- include('partials/password', { id: 'markdown-current-password', label: 'Current master password', name: 'password', autocomplete: 'current-password' }) %>
+      <div class="actions"><button class="button">Download Markdown</button><span class="status" role="status" data-status></span></div>
+    </form>
+  </details>
+</section>
+<%- include('partials/end') %>
+

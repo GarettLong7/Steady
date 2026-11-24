@@ -1,0 +1,9 @@
+{
+  "name": "steady",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=24.8.0"},
+  "scripts": {"start": "node app.js", "dev": "node --watch app.js", "test": "node --test"},
+  "dependencies": {"bootstrap": "^5.3.8", "ejs": "^3.1.10", "express": "^5.1.0", "express-session": "^1.18.2", "helmet": "^8.1.0"}
+}

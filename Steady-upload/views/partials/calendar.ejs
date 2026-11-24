@@ -1,0 +1,38 @@
+<section class="panel calendar">
+  <div class="section-heading calendar-heading">
+    <h2><%= calendar.title %></h2>
+    <nav class="actions" aria-label="Browse months">
+      <% if (calendar.previous >= '0002-01') { %><a class="button compact" href="/history?month=<%= calendar.previous %>">Previous</a><% } %>
+      <a class="button compact" href="/history">Today</a>
+      <% if (calendar.next <= '9998-12') { %><a class="button compact" href="/history?month=<%= calendar.next %>">Next</a><% } %>
+    </nav>
+  </div>
+  <div class="calendar-grid">
+    <% for (const weekday of ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']) { %><span class="weekday"><%= weekday %></span><% } %>
+    <% for (let i = 0; i < calendar.padding; i++) { %><span aria-hidden="true"></span><% } %>
+    <% for (const cell of calendar.cells) {
+      const status = { full:'All completed', partial:'Some completed', incomplete:'None completed',
+        unrecorded:'No recorded activity', unscheduled:'No scheduled habits', 'optional-activity':'Optional activity completed', future:'Future date' }[cell.state];
+    %>
+      <a class="calendar-day <%= cell.state %><%= cell.day === today ? ' calendar-today' : '' %>" href="/history?month=<%= cell.day.slice(0,7) %>&amp;day=<%= cell.day %>"
+        data-day-label="<%= dateLabel(cell.day) %>" data-total="<%= cell.data?.total ?? 0 %>" data-done="<%= cell.data?.done ?? 0 %>"
+        data-mood="<%= cell.mood %>" data-journal="<%= cell.journal %>" data-extra="<%= cell.extra %>"
+        aria-label="<%= dateLabel(cell.day) %>, <%= status %><%= cell.journal ? ', journal entry' : '' %><%= day === cell.day ? ', selected' : '' %>"
+        <% if (day === cell.day) { %>data-selected-day<% } %> <% if (cell.day === today) { %>aria-current="date"<% } %>>
+        <%= Number(cell.day.slice(-2)) %><% if (cell.journal) { %><i class="journal-dot" aria-hidden="true"></i><% } %>
+      </a>
+    <% } %>
+  </div>
+  <div class="legend" role="group" aria-label="Calendar legend">
+    <% for (const [group, items] of [
+      ['Habit completion', [['full','All complete'],['partial','Some complete'],['incomplete','None complete']]],
+      ['Other dates', [['unrecorded','No activity'],['unscheduled','Unscheduled'],['future','Future']]],
+      ['Activity indicators', [['optional-activity','Optional activity'],['journal-dot','Journal entry']]]
+    ]) { %>
+      <div class="legend-group" role="group" aria-label="<%= group %>">
+        <% for (const [state, label] of items) { %><span><i class="<%= state %>" aria-hidden="true"></i><%= label %></span><% } %>
+      </div>
+    <% } %>
+  </div>
+</section>
+

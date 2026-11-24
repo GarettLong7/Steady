@@ -1,0 +1,27 @@
+<%- include('partials/head', { title: setup ? 'Set up Steady' : 'Unlock Steady' }) %>
+<main id="main" class="auth-page">
+  <div class="brand auth-brand"><%- include('partials/brand-mark', { detailed: true }) %>Steady</div>
+  <section class="panel auth-panel" aria-labelledby="auth-title">
+    <p class="eyebrow">Small steps. Every day.</p>
+    <h1 id="auth-title"><%= setup ? 'Set up Steady' : 'Welcome back' %></h1>
+    <p class="muted"><%= setup ? 'Choose a master password to protect your private journal.' : 'Enter your master password to unlock your habits and journal.' %></p>
+    <% if (error) { %><p class="notice" role="alert"><%= error %><% if (retryAfter) { %>
+      Wait <span data-cooldown="<%= retryAfter %>"><%= retryAfter %> <%= retryAfter === 1 ? 'second' : 'seconds' %></span> before trying again.<% } %></p><% } %>
+    <p class="notice" data-cooldown-finished role="status" hidden>You can try again now.</p>
+    <form method="post" action="/auth" class="form-stack" data-auth>
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <%- include('partials/password', { id: 'master-password', label: 'Master password', name: 'password',
+        autocomplete: setup ? 'new-password' : 'current-password', minLength: setup ? 12 : undefined }) %>
+      <% if (setup) { %>
+        <%- include('partials/password', { id: 'confirm-password', label: 'Confirm password', name: 'confirmation', autocomplete: 'new-password', minLength: 12, describedBy: 'password-mismatch' }) %>
+        <p class="notice" id="password-mismatch" role="status" hidden>The passwords do not match.</p>
+        <p class="muted small">Use at least 12 characters. Keep your password somewhere safe. If you forget it, Steady cannot recover your encrypted journal.</p>
+      <% } %>
+      <div class="actions">
+        <button class="button primary" type="submit"><%= setup ? 'Create password' : 'Unlock Steady' %></button>
+      </div>
+    </form>
+  </section>
+</main>
+</body></html>
+

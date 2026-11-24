@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> | Steady</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/steady-favicon.svg">
+  <meta name="theme-color" content="#20242A">
+  <link rel="stylesheet" href="/assets/bootstrap.min.css">
+  <link rel="stylesheet" href="/assets/steady.css">
+  <% if (typeof csrf !== 'undefined') { %><meta name="csrf-token" content="<%= csrf %>"><% } %>
+  <script type="module" src="/assets/steady.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+

@@ -1,0 +1,14 @@
+<form method="post" class="mood-form" data-mood data-day="<%= daily.day %>">
+  <fieldset>
+    <legend>Daily mood <span class="muted">(optional)</span></legend>
+    <div class="mood-options">
+      <% for (const mood of [...moods, '']) { %>
+        <label><input type="radio" name="mood" value="<%= mood %>" <%= mood === daily.mood ? 'checked' : '' %>>
+          <span><%= mood || 'None' %></span></label>
+      <% } %>
+    </div>
+  </fieldset>
+  <span class="status" role="status" data-status></span>
+  <button class="button compact" type="button" data-retry hidden>Retry mood save</button>
+</form>
+

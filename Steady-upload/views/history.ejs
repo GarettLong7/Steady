@@ -1,0 +1,33 @@
+<%- include('partials/layout') %>
+<section class="intro">
+  <h1>History</h1>
+</section>
+<section class="panel history-search writing-search" aria-labelledby="writing-search-heading">
+  <%- include('partials/writing-search', { notesOnly: false }) %>
+</section>
+<div class="actions history-actions">
+  <a class="button" href="/statistics">Weekly summary</a>
+</div>
+<div class="two-column history-main">
+  <%- include('partials/calendar') %>
+  <% if (daily) { %>
+    <div class="panel">
+      <%- include('partials/tracker', { daily, heading: dateLabel(day), embedded: true }) %>
+      <section class="history-reflections section-gap">
+        <%- include('partials/mood', { daily }) %>
+        <h2 class="section-gap">Daily reflection</h2>
+        <% if (quick?.version) { %>
+          <p class="entry-preview"><%= quick.body %></p>
+          <a href="/?day=<%= day %>">Edit daily reflection</a>
+        <% } else { %><p class="muted">No reflection recorded.</p><a href="/?day=<%= day %>">Write a reflection</a><% } %>
+      </section>
+    </div>
+  <% } else { %>
+    <section class="panel">
+      <h2><%= day ? dateLabel(day) : 'Select a date' %></h2>
+      <p class="muted"><%= day ? (day > today ? 'This date is in the future.' : 'Tracking had not begun on this date.') : 'Choose a calendar date to see its details.' %></p>
+    </section>
+  <% } %>
+</div>
+<%- include('partials/end') %>
+

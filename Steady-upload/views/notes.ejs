@@ -1,0 +1,24 @@
+<%- include('partials/layout') %>
+<section class="intro check-in-header">
+  <div><h1>Notes</h1><p class="muted">Thoughts, memories, and moments worth keeping.</p></div>
+  <a class="button primary" href="/notes/new">+ New Note</a>
+</section>
+<section class="panel writing-search" aria-labelledby="writing-search-heading">
+  <%- include('partials/writing-search', { notesOnly: true }) %>
+</section>
+<section class="panel section-gap" aria-label="Your notes">
+  <% if (!entries.length) { %><p class="muted">No notes on this page.</p><% } %>
+  <% for (const entry of entries) { %>
+    <a class="writing-result" href="/notes/<%= entry.id %>">
+      <strong><%= entry.title || 'Untitled note' %></strong>
+      <span class="muted small"><time datetime="<%= entry.date %>"><%= dateLabel(entry.date) %></time><%= entry.edited !== entry.date ? ' · Edited ' + entry.edited : '' %></span>
+      <% if (entry.preview) { %><span><%= entry.preview %></span><% } %>
+    </a>
+  <% } %>
+  <% if (page > 1 || next) { %><nav class="actions section-gap" aria-label="Browse notes">
+    <% if (page > 1) { %><a class="button compact" href="/notes?page=<%= page - 1 %>">Previous</a><% } %>
+    <% if (next) { %><a class="button compact" href="/notes?page=<%= page + 1 %>">Next</a><% } %>
+  </nav><% } %>
+</section>
+<%- include('partials/end') %>
+

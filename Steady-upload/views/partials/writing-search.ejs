@@ -1,0 +1,24 @@
+<h2 id="writing-search-heading"><%= notesOnly ? 'Find a note' : 'Find an entry' %></h2>
+<form method="post" class="form-stack writing-search-form" role="search" aria-labelledby="writing-search-heading" data-search data-type="<%= notesOnly ? 'note' : 'daily' %>">
+  <label><%= notesOnly ? 'Search by text or date' : 'Search reflections' %>
+    <span class="history-search-input">
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="4.75"/><path d="m12 12 4 4"/></svg>
+      <input type="search" class="field" data-search-term name="q" maxlength="200" autocomplete="off" placeholder="<%= notesOnly ? 'Try a word or 23 November' : 'Try a word or phrase' %>">
+    </span>
+  </label>
+  <label>Date <span class="muted">(optional)</span><input type="date" class="field" name="day"></label>
+  <div class="writing-search-actions">
+    <button type="submit" class="button" disabled><%= notesOnly ? 'Find entries' : 'Search' %></button>
+    <% if (!notesOnly) { %><button type="button" class="button" data-search-clear disabled>Clear</button><% } %>
+  </div>
+  <% if (!notesOnly) { %>
+    <label class="check-line"><input type="checkbox" data-search-all> Search all writing by text or date</label>
+  <% } %>
+</form>
+<div data-search-results hidden>
+  <p class="muted small search-feedback" data-search-status role="status"></p>
+  <div data-search-list></div>
+  <button type="button" class="button compact" data-search-retry hidden>Retry</button>
+</div>
+<noscript><p class="muted small">Enable JavaScript to search your writing.</p></noscript>
+

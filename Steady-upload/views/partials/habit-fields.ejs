@@ -1,0 +1,29 @@
+<label>Name<input class="field" name="name" value="<%= habit.name %>" maxlength="100" required></label>
+<label>Description<textarea class="field" name="description" maxlength="500" rows="2"><%= habit.description %></textarea></label>
+<label>Target minutes<input class="field" type="number" name="minutes" value="<%= habit.minutes %>" min="1" max="1440" required></label>
+<label>Schedule<select class="field" name="kind" data-habit-schedule>
+  <option value="daily" <%= (habit.kind ?? 'daily') === 'daily' ? 'selected' : '' %>>Daily</option>
+  <option value="weekdays" <%= habit.kind === 'weekdays' ? 'selected' : '' %>>Specific weekdays</option>
+  <option value="weekly" <%= habit.kind === 'weekly' ? 'selected' : '' %>>Days per week</option>
+</select></label>
+<fieldset data-schedule-option="daily" class="schedule-days" <%= (habit.kind ?? 'daily') === 'daily' ? '' : 'hidden' %>>
+  <legend>Icon</legend>
+  <div class="actions habit-icon-options">
+    <% for (const [key, option] of Object.entries(habitIconOptions)) { %>
+      <label class="check-line">
+        <input type="radio" name="icon" value="<%= key %>" <%= (habit.icon ?? 'plus') === key ? 'checked' : '' %>
+          <%= (habit.kind ?? 'daily') === 'daily' ? '' : 'disabled' %>>
+        <%- include('habit-icon', { kind: key }) %><span><%= option.label %></span>
+      </label>
+    <% } %>
+  </div>
+</fieldset>
+<fieldset data-schedule-option="weekdays" class="schedule-days">
+  <legend>Scheduled weekdays</legend>
+  <div class="actions"><% for (const [index, weekday] of ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].entries()) { %>
+    <label class="check-line"><input type="checkbox" name="weekday" value="<%= 1 << index %>" <%= habit.weekdays & (1 << index) ? 'checked' : '' %>><%= weekday %></label>
+  <% } %></div>
+</fieldset>
+<label data-schedule-option="weekly">Days per week<input class="field" type="number" name="target" min="1" max="7" value="<%= habit.target || 2 %>"></label>
+<label class="check-line"><input type="checkbox" name="active" <%= habit.active ? 'checked' : '' %>> Enabled</label>
+

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <defs>
+    <radialGradient id="jade" cx=".28" cy=".24" r=".83">
+      <stop stop-color="#e0eed6"/>
+      <stop offset=".48" stop-color="#a2c7a9"/>
+      <stop offset=".83" stop-color="#6f9c86"/>
+      <stop offset="1" stop-color="#618471"/>
+    </radialGradient>
+    <linearGradient id="polish" x2=".7" y2="1">
+      <stop stop-color="#ffffff" stop-opacity=".72"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="stone">
+      <path clip-rule="evenodd" d="M24 7a19 19 0 1 1 0 38 19 19 0 0 1 0-38Zm0 10a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z"/>
+    </clipPath>
+  </defs>
+  <path d="M24 8V4" fill="none" stroke="#a8c6ab" stroke-width="2" stroke-linecap="round"/>
+  <path fill="url(#jade)" fill-rule="evenodd" stroke="#b1cdb4" stroke-width=".9"
+    d="M24 7a19 19 0 1 1 0 38 19 19 0 0 1 0-38Zm0 10a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z"/>
+  <g clip-path="url(#stone)" fill="none" stroke-linecap="round">
+    <path d="M5 26c10 4 8-13 28-15m-26 24c10 8 21 7 31-1" stroke="#edf4d9" opacity=".25" stroke-width="2.4"/>
+    <path d="M7 31c6 3 8-3 13-6m11-13c2.5 3 9 5 13 3m-9 16c5 0 7-4 11-7" stroke="#587e68" opacity=".26" stroke-width="1.4"/>
+    <path d="M8 24a16 16 0 0 1 16-15" stroke="url(#polish)" stroke-width="1.8"/>
+    <path d="M29 41a15 15 0 0 0 10-10M20 35a10 10 0 0 0 11-2.5" stroke="#e8f3df" opacity=".45" stroke-width="1.1"/>
+  </g>
+</svg>
+

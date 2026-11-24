@@ -1,0 +1,18 @@
+<%- include('head', { title }) %>
+<header class="site-header">
+  <div class="shell header-inner">
+    <a class="brand" href="/" aria-label="Steady dashboard"><%- include('brand-mark') %>Steady</a>
+    <nav aria-label="Main navigation">
+      <% for (const [label, url] of [['Today','/'],['History','/history'],['Monthly','/monthly'],['Notes','/notes'],['Settings','/settings']]) { %>
+        <a href="<%= url %>" <% if (path === url || (url === '/notes' && path.startsWith('/notes/'))) { %>aria-current="<%= path === url ? 'page' : 'true' %>"<% } %>><%= label %></a>
+      <% } %>
+    </nav>
+    <form method="post" action="/lock" class="lock-form">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <button type="submit" class="button">Lock<span class="lock-now"> now</span></button>
+    </form>
+  </div>
+</header>
+<main class="shell page" id="main" data-today="<%= today %>">
+  <p id="session-status" class="notice" role="status" hidden></p>
+

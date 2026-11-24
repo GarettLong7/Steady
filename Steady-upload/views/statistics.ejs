@@ -1,0 +1,81 @@
+<%- include('partials/layout') %>
+<section class="intro"><h1>Statistics</h1><p class="muted">See how your daily habits are taking shape.</p></section>
+<div class="two-column section-gap">
+  <section class="panel">
+    <div class="section-heading">
+      <h2>Weekly progress</h2>
+      <nav class="actions" aria-label="Browse weeks">
+        <% if (previousWeek) { %><a class="button compact" href="/statistics?week=<%= previousWeek %>">Previous week</a><% } %>
+        <% if (nextWeek) { %><a class="button compact" href="/statistics?week=<%= nextWeek %>">Next week</a><% } %>
+      </nav>
+    </div>
+    <p class="muted"><%= weekly.start %> to <%= weekly.end %></p>
+    <p><strong><%= weekly.recordedDays %></strong> days with habit or mood activity · <strong><%= weekly.completions %></strong> habit completions</p>
+    <% if (weekly.comparison) { %>
+      <p class="muted small">Previous week<%= weekly.comparison.partial ? ' at the same point' : '' %> · <%= weekly.comparison.previousCompletions %> habit completions</p>
+    <% } %>
+    <div class="bar-chart">
+      <% for (const row of weekly.days) { %>
+        <div class="bar-row">
+          <time datetime="<%= row.day %>"><%= row.day.slice(5) %></time>
+          <% if (row.percentage !== null) { %>
+            <progress value="<%= row.percentage %>" max="100" aria-label="<%= dateLabel(row.day) %>"><%= row.percentage %>%</progress>
+            <span><%= row.percentage %>%</span>
+          <% } else { %>
+            <span class="weekly-empty"><%= row.upcoming ? 'Upcoming' : row.done ? row.done + ' optional completions' : row.recorded ? 'No habits scheduled' : 'No activity recorded' %></span>
+          <% } %>
+        </div>
+      <% } %>
+    </div>
+    <div class="weekly-breakdown">
+      <div><h3>Habit completions</h3>
+        <% if (!weekly.habits.length) { %><p class="muted small">No habits scheduled yet.</p><% } %>
+        <dl><% for (const habit of weekly.habits) { %>
+          <% if (habit.scheduled) { %><div><dt><%= habit.name %> <span class="muted">(scheduled)</span></dt><dd><%= habit.completed %> / <%= habit.scheduled %></dd></div><% } %>
+          <% if (habit.target) { %><div><dt><%= habit.name %> <span class="muted">(weekly goal)</span></dt><dd><%= habit.weeklyCompleted %> / <%= habit.target %></dd></div><% } %>
+          <% if (habit.extra) { %><div><dt><%= habit.name %> <span class="muted">(optional)</span></dt><dd><%= habit.extra %></dd></div><% } %>
+        <% } %></dl>
+      </div>
+      <div><h3>Recorded moods</h3>
+        <% if (!weekly.moods.some(item => item.count)) { %><p class="muted small">No moods logged.</p><% } else { %>
+          <dl><% for (const item of weekly.moods) { %><div><dt><%= item.mood %></dt><dd><%= item.count %></dd></div><% } %></dl>
+        <% } %>
+      </div>
+    </div>
+  </section>
+  <%- include('partials/calendar') %>
+</div>
+<details class="panel section-gap">
+  <summary>Overall progress</summary>
+  <div class="metrics section-gap">
+    <% const rate = value => value === null ? '—' : value + '%'; %>
+    <% for (const [label, value] of [['Tracked days',stats.tracked],['Fully completed days',stats.fullDays],['Current streak',stats.current],['Longest streak',stats.longest],['Last 7 days',rate(stats.weekRate)],['Last 30 days',rate(stats.monthRate)]]) { %>
+      <div class="metric"><strong><%= value %></strong><span><%= label %></span></div>
+    <% } %>
+  </div>
+</details>
+<section class="panel section-gap">
+  <div class="section-heading"><h2>14-day consistency challenge</h2></div>
+  <% if (stats.challenge) { const challenge = stats.challenge; %>
+    <p><strong><%= challenge.completed %></strong> fully completed days toward a goal of <%= challenge.goal %></p>
+    <progress aria-label="Challenge goal" max="<%= challenge.goal %>" value="<%= Math.min(challenge.completed, challenge.goal) %>"></progress>
+    <p class="muted section-gap"><%= challenge.started %> to <%= challenge.end %> · <%= challenge.completed >= challenge.goal ? 'Goal reached' : today > challenge.end ? 'Challenge finished' : 'In progress' %></p>
+  <% } %>
+  <form method="post" data-action="/api/challenge" data-confirm="Start a new 14-day challenge today?" data-reload>
+    <button class="button">Restart challenge</button> <span class="status" role="status" data-status></span>
+  </form>
+</section>
+<section class="panel section-gap">
+  <h2>Individual habits</h2>
+  <div class="table-responsive">
+    <table class="table steady-table">
+      <thead><tr><th scope="col">Habit</th><th scope="col">Completed days</th><th scope="col">Completion</th><th scope="col">Current streak</th><th scope="col">Longest streak</th></tr></thead>
+      <tbody>
+        <% for (const habit of stats.habits) { %><tr><th scope="row"><%= habit.name %><% if (!habit.active) { %> <span class="muted small">(disabled)</span><% } %></th><td><%= habit.completed %></td><td><%= habit.percentage === null ? '—' : habit.percentage + '%' %></td><td><%= habit.current %></td><td><%= habit.longest %></td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted small">Daily rates use scheduled habits only. Optional activity and weekly targets count in the weekly overview. Rest days in a habit’s schedule do not interrupt its streak.</p>
+</section>
+<%- include('partials/end') %>
+

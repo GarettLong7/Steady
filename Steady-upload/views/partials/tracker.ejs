@@ -1,0 +1,53 @@
+<section class="<%= typeof embedded !== 'undefined' && embedded ? '' : 'panel ' %>tracker" data-tracker data-day="<%= daily.day %>">
+  <div class="section-heading">
+    <h2><%= heading %></h2>
+    <span class="status" role="status" data-status></span>
+  </div>
+  <p class="progress-caption"><span data-count><%= daily.total ? daily.done + ' of ' + daily.total + ' completed' : 'No habits scheduled for this date.' %></span><strong data-percent <%= daily.total ? '' : 'hidden' %>><%= daily.percentage %>%</strong></p>
+  <progress aria-label="Habit completion" max="100" value="<%= daily.percentage %>" <%= daily.total ? '' : 'hidden' %>><%= daily.percentage %>%</progress>
+  <div class="habit-list">
+    <% for (const habit of daily.habits) { %>
+      <label class="habit-row">
+        <input type="checkbox" data-habit="<%= habit.habit %>" <%= habit.completed ? 'checked' : '' %>>
+        <% if (typeof habitIcons !== 'undefined') { %><%- include('habit-icon', { kind: habitIcons[habit.habit] }) %><% } %>
+        <span class="habit-text"><strong><%= habit.name %></strong><span class="habit-description"><%= habit.description %></span></span>
+        <span class="duration"><%= habit.minutes %> min</span>
+      </label>
+    <% } %>
+  </div>
+  <% const weeklyGoals = daily.optional.filter(habit => habit.weekly);
+     const restActivities = daily.optional.filter(habit => !habit.weekly); %>
+  <% if (weeklyGoals.length) { %>
+    <section class="weekly-goals section-gap" aria-label="Weekly goals">
+      <h3>Weekly goals</h3>
+      <% for (const habit of weeklyGoals) { %>
+        <div class="weekly-goal-row">
+          <label class="weekly-goal-label">
+            <input type="checkbox" data-habit="<%= habit.habit %>" <%= habit.completed ? 'checked' : '' %>>
+            <span><%= habit.name %></span>
+          </label>
+          <span class="weekly-goal-count" data-week-progress="<%= habit.habit %>" aria-live="polite"><%= habit.weekly.completed %> / <%= habit.weekly.goal %> days this week</span>
+          <progress data-week-meter="<%= habit.habit %>" max="<%= habit.weekly.goal %>" value="<%= Math.min(habit.weekly.completed, habit.weekly.goal) %>"
+            aria-label="<%= habit.name %> weekly goal"></progress>
+        </div>
+      <% } %>
+    </section>
+  <% } %>
+  <% if (restActivities.length) { %>
+    <details class="section-gap optional-habits" <%= restActivities.some(habit => habit.completed) ? 'open' : '' %>>
+      <summary>Optional activity</summary>
+      <% for (const habit of restActivities) { %>
+        <label class="habit-row optional-habit-row">
+          <input type="checkbox" data-habit="<%= habit.habit %>" <%= habit.completed ? 'checked' : '' %>>
+          <% if (typeof habitIcons !== 'undefined') { %><%- include('habit-icon', { kind: habitIcons[habit.habit] }) %><% } %>
+          <span class="habit-text"><strong><%= habit.name %></strong><span>Optional on this date</span></span>
+          <span class="duration"><%= habit.minutes %> min</span>
+        </label>
+      <% } %>
+    </details>
+  <% } %>
+  <% if (typeof showCompleteNote === 'undefined' || showCompleteNote) { %>
+    <p class="encouragement" data-complete-note <%= daily.total && daily.done === daily.total ? '' : 'hidden' %>>You kept your promises to yourself today. Well done.</p>
+  <% } %>
+</section>
+

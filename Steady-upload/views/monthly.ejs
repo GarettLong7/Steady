@@ -1,0 +1,33 @@
+<%- include('partials/layout') %>
+<div class="writing-page">
+<section class="intro">
+  <h1>Monthly reflection</h1>
+  <p class="eyebrow"><%= calendar.title %></p>
+  <nav class="actions date-navigation" aria-label="Browse reflection months">
+    <% if (calendar.previous >= '0002-01') { %><a class="button compact" href="/monthly?month=<%= calendar.previous %>">Previous month</a><% } %>
+    <a class="button compact" href="/monthly">This month</a>
+    <% if (calendar.next <= currentMonth) { %><a class="button compact" href="/monthly?month=<%= calendar.next %>">Next month</a><% } %>
+    <a href="/history?month=<%= month %>">History</a>
+  </nav>
+</section>
+<section class="panel monthly-editor" aria-label="Monthly journal">
+  <form method="get" action="/monthly" class="entry-date" data-month-select>
+    <label for="reflection-month">Month</label>
+    <input class="field" type="month" id="reflection-month" name="month" value="<%= month %>" min="0002-01" max="<%= currentMonth %>" required>
+    <button class="button compact" type="submit">Open month</button>
+  </form>
+  <form method="post" class="form-stack" data-editor data-endpoint="/api/monthly/<%= month %>" data-day="<%= month %>"
+    data-period-param="month" data-version="<%= reflection.version %>" data-generation="<%= generation %>">
+    <label>Reflection<textarea class="field writing-textarea" name="body" rows="8"
+      placeholder="What went well this month? What was difficult? What did you learn? What would you like to focus on next month?">
+<%= reflection.body ?? '' %></textarea></label>
+    <div class="actions">
+      <span class="status" role="status" data-status><%= reflection.version ? 'Saved' : 'Changes save automatically' %></span>
+      <button class="button compact" type="button" data-retry hidden>Retry</button>
+      <button class="button compact" type="button" data-reload-entry hidden>Reload latest</button>
+    </div>
+  </form>
+</section>
+</div>
+<%- include('partials/end') %>
+

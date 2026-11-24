@@ -1,0 +1,28 @@
+<%- include('partials/layout') %>
+<div class="writing-page">
+  <section class="intro check-in-header">
+    <h1><%= note.version ? 'Personal note' : 'New note' %></h1>
+    <a href="/notes">Back to Notes</a>
+  </section>
+  <section class="panel editor" id="journal-editor">
+    <div class="focus-controls">
+      <button class="button compact" type="button" data-focus-writing aria-pressed="false" aria-controls="journal-editor">Focus Writing</button>
+    </div>
+    <form method="post" class="form-stack" data-editor data-endpoint="/api/notes/<%= note.id %>"
+      data-saved-url="/notes/<%= note.id %>" data-delete-return="/notes"
+      data-version="<%= note.version %>" data-generation="<%= generation %>">
+      <label>Title<input class="field" name="title" value="<%= note.title %>" maxlength="200"></label>
+      <label>Event date <span class="muted">(optional)</span><input class="field note-date" type="date" name="eventDay" value="<%= note.event_day %>"></label>
+      <label>Note<textarea class="field writing-textarea" name="body" rows="12">
+<%= note.body %></textarea></label>
+      <div class="actions">
+        <span class="status" role="status" data-status><%= note.version ? 'Saved' : 'Changes save automatically' %></span>
+        <button class="button compact" type="button" data-retry hidden>Retry</button>
+        <button class="button compact" type="button" data-reload-entry hidden>Reload latest</button>
+        <button class="button compact danger" type="button" data-delete <%= note.version ? '' : 'hidden' %>>Delete note</button>
+      </div>
+    </form>
+  </section>
+</div>
+<%- include('partials/end') %>
+
