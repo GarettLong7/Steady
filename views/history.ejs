@@ -18,8 +18,8 @@
         <h2 class="section-gap">Daily reflection</h2>
         <% if (quick?.version) { %>
           <p class="entry-preview"><%= quick.body %></p>
-          <a href="/?day=<%= day %>">Edit daily reflection</a>
-        <% } else { %><p class="muted">No reflection recorded.</p><a href="/?day=<%= day %>">Write a reflection</a><% } %>
+        <% } else { %><p class="muted">No reflection recorded.</p><% } %>
+        <% if (editable) { %><a href="/?day=<%= day %>"><%= quick?.version ? 'Edit daily reflection' : 'Write a reflection' %></a><% } %>
       </section>
     </div>
   <% } else { %>

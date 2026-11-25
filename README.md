@@ -24,9 +24,9 @@ Steady is a private, single-user habit tracker and journal. It runs on your Wind
 
 ## Use Steady
 
-- **Today** is the daily check-in. Tick or clear a habit, select a mood, and write in the optional Quick Reflection. It autosaves in one encrypted entry per date. Browse dates with **Previous day**, **Next day**, or **Today**. Use **+ New Note** for standalone writing.
+- **Today** is the daily check-in. Tick or clear a habit, select a mood, and write in the optional Quick Reflection. It autosaves in one encrypted entry per date. Use **Edit yesterday** to finish the previous day's check-in, including after midnight Singapore time. Use **Back to Today** to return and **+ New Note** for standalone writing.
 - **Notes** stores standalone writing with an optional event date. Browse by recently edited, search, or open a note to edit it. **Focus Writing** keeps your draft in place while hiding secondary controls. Use **Escape** to exit.
-- **History** searches daily reflections, monthly reflections, and notes above the Monday-first calendar. Press **/** outside a text field to focus search. Try text, a day number, a date such as **23 Nov 2026**, or a month and year. Select a date to review its check-in and edit its reflection.
+- **History** searches daily reflections, monthly reflections, and notes above the Monday-first calendar. Press **/** outside a text field to focus search. Try text, a day number, a date such as **23 Nov 2026**, or a month and year. Select a date to review its check-in. Today and yesterday are editable, and older daily check-ins are read-only.
 - **Monthly** has one optional encrypted writing area per Singapore calendar month. Browse earlier months to reopen and edit them.
 - Edits autosave after about a second. Wait for **Saved** before closing the browser. Use **Retry** after a failed save or press **Ctrl+Enter** to save. If Steady locks with unsaved changes, leave the tab open, unlock in another tab using the link, then retry from the original tab. If an entry changed elsewhere, copy your unsaved text before reloading the latest version.
 - **Statistics**, accessible from History, shows Monday–Sunday habit and mood activity and compares equivalent periods when both have records. Earlier rates, streaks and the 14-day challenge remain available. Restarting a challenge starts a new window today.
@@ -91,6 +91,15 @@ Run `npm test` or `npm.cmd test`. The test suites use temporary SQLite databases
 | `database/migrations/` | Versioned SQLite schema |
 | `views/` and `public/` | EJS pages, styles and browser interactions |
 | `tests/` | Automated core and HTTP tests |
+
+## Version history
+
+### Phase 4
+
+- **Edit yesterday** opens the previous Singapore calendar day's check-in from Today. After midnight, you can finish logging yesterday's habits, mood, and reflection, including starting a blank reflection. The page displays the full date, and saves stay on that date. Older daily check-ins are read-only.
+- Yesterday uses its saved habit plan when available. On a fresh setup, the page previews the default daily habits unchecked. Opening the page leaves History unchanged. The first habit check-off saves the plan and completion together, and saved changes appear in History.
+- Settings supports custom icons for daily habits and confirmed habit deletion that preserves past check-offs.
+- Personal Notes support optional event dates and Focus Writing. History searches Notes and daily and monthly reflections together. Older weekly writing is preserved as Notes when restoring an older encrypted backup.
 
 ## Windows troubleshooting
 

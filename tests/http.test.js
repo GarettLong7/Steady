@@ -346,6 +346,149 @@ test('the daily editor preserves its Singapore date across midnight and the pend
   assert.match(prior, /rel="icon" type="image\/svg\+xml" href="\/assets\/steady-favicon.svg"/);
 });
 
+test('Edit yesterday previews default habits and saves the first check-off with its plan', async t => {
+  const f = await fixture(t);
+  const client = f.client();
+  assert.equal((await client.auth(password, password)).status, 303);
+  const today = f.model.today();
+  const yesterday = '2026-11-22';
+  const page = async path => {
+    const response = await client.request(path);
+    assert.equal(response.status, 200);
+    return response.text();
+  };
+  const historyPath = '/history?day=' + yesterday;
+  const put = (path, json) => client.request(path, { method: 'PUT', json });
+  const custom = { name: 'Started today', description: '', minutes: 5, active: true, kind: 'weekdays', weekdays: 127 };
+  assert.equal((await client.request('/api/habits', { method: 'POST', json: custom })).status, 204);
+  const historyBefore = await page(historyPath);
+  const todayBefore = f.model.daily(today);
+  const customId = todayBefore.habits.find(habit => habit.name === custom.name).habit;
+  const defaults = f.model.habits().filter(habit => habit.default_key).map(habit => habit.id);
+  assert.equal(defaults.length, 4);
+  const tracked = () => f.model.get('SELECT day FROM days WHERE day=?', yesterday)?.day;
+  assert.equal(tracked(), undefined);
+  const dashboard = await page('/');
+  assert.match(dashboard, /href="\/\?day=2026-11-22">Edit yesterday<\/a>/);
+  const dated = await page('/?day=' + yesterday);
+  assert.match(dated, /<h1><time datetime="2026-11-22">Sunday, November 22, 2026<\/time><\/h1>/);
+  assert.deepEqual([...dated.matchAll(/data-habit="(\d+)"\s*>/g)].map(match => Number(match[1])), defaults);
+  assert.doesNotMatch(dated, /Started today/);
+  assert.match(dated, /name="mood" value="" checked/);
+  const [, endpoint] = dated.match(/data-endpoint="([^"]+)"[^>]*data-version="0"/);
+  assert.equal(endpoint, '/api/daily/' + yesterday);
+  assert.match(dated, /name="body"[^>]*>\s*<\/textarea>/);
+  assert.equal(tracked(), undefined);
+  assert.equal(await page(historyPath), historyBefore);
+
+  const body = 'My first reflection for yesterday.';
+  const save = json => put(endpoint, json);
+  const draft = { body, version: 0, generation: f.model.meta('generation') };
+  assert.equal((await save({ ...draft, generation: 'stale' })).status, 409);
+  assert.equal((await put('/api/completions', { day: yesterday, habit: customId, completed: true })).status, 404);
+  assert.equal(tracked(), undefined);
+  assert.equal((await put('/api/completions', { day: yesterday, habit: defaults[0], completed: true })).status, 200);
+  const checked = new RegExp('data-habit="' + defaults[0] + '" checked');
+  assert.match(await page('/?day=' + yesterday), checked);
+  assert.match(await page(historyPath), checked);
+  assert.equal((await put('/api/mood', { day: yesterday, mood: 'Good' })).status, 204);
+  assert.equal((await save(draft)).status, 200);
+  assert.equal(tracked(), yesterday);
+  assert.equal(f.model.meta('first'), yesterday);
+  assert.match(await page('/?day=' + yesterday), /My first reflection for yesterday\./);
+  assert.match(await page(historyPath), /My first reflection for yesterday\./);
+  assert.match(await page(historyPath), /name="mood" value="Good" checked/);
+  assert.doesNotMatch(await page('/'), /My first reflection for yesterday\./);
+  assert.deepEqual(f.model.daily(today), todayBefore);
+  assert.equal(f.model.get('SELECT count(*) AS count FROM daily_plans WHERE day=?', yesterday).count, defaults.length);
+  assert.ok(!f.model.get('SELECT ciphertext FROM journals WHERE day=?', yesterday).ciphertext.includes(body));
+});
+
+test('yesterday can start with a mood on a fresh database', async t => {
+  const f = await fixture(t);
+  const client = f.client();
+  assert.equal((await client.auth(password, password)).status, 303);
+  const yesterday = '2026-11-22';
+  assert.equal(f.model.get('SELECT 1 FROM days WHERE day=?', yesterday), undefined);
+  const response = await client.request('/api/mood', { method: 'PUT', json: { day: yesterday, mood: 'Good' } });
+  assert.equal(response.status, 204);
+  assert.equal(f.model.daily(yesterday).mood, 'Good');
+  assert.equal(f.model.daily(f.model.today()).mood, '');
+});
+
+test('Edit yesterday saves the dated check-in just after Singapore midnight', async t => {
+  const f = await fixture(t);
+  const old = '2026-11-23';
+  const yesterday = '2026-11-24';
+  const today = '2026-11-25';
+  const requestPage = async (client, path) => {
+    const response = await client.request(path);
+    assert.equal(response.status, 200);
+    return response.text();
+  };
+  const setup = f.client();
+  assert.equal((await setup.auth(password, password)).status, 303);
+  f.advance(38 * 3600000 + 1000);
+  const client = f.client();
+  assert.equal((await client.auth(password)).status, 303);
+  assert.equal(f.model.today(), today);
+  assert.equal((await client.request('/api/habits', { method: 'POST',
+    json: { name: 'New today habit', description: '', minutes: 5, active: true, kind: 'daily' } })).status, 204);
+  const todayBefore = f.model.daily(today);
+  const dashboard = await requestPage(client, '/');
+  assert.match(dashboard, /New today habit/);
+  const [, editLink] = dashboard.match(/href="([^"]+)">Edit yesterday<\/a>/);
+  assert.equal(editLink, '/?day=' + yesterday);
+  const page = await requestPage(client, editLink);
+  assert.match(page, /<h1><time datetime="2026-11-24">Tuesday, November 24, 2026<\/time><\/h1>/);
+  assert.match(page, /href="\/">Back to Today<\/a>/);
+  assert.doesNotMatch(page, /New today habit/);
+  const [, habitDay, habit] = page.match(/data-tracker data-day="([^"]+)"[\s\S]*?data-habit="(\d+)"\s*>/);
+  const [, moodDay] = page.match(/data-mood data-day="([^"]+)"/);
+  const [, endpoint, version, generation] = page.match(/data-endpoint="([^"]+)"[^>]+data-version="(\d+)"\s+data-generation="([^"]+)"/);
+  assert.equal(habitDay, yesterday);
+  assert.equal(moodDay, yesterday);
+  assert.equal(endpoint, '/api/daily/' + yesterday);
+  assert.equal(version, '0');
+  const put = (path, json) => client.request(path, { method: 'PUT', json });
+  const completion = { day: habitDay, habit: Number(habit), completed: true };
+  assert.equal((await put('/api/completions', completion)).status, 200);
+  assert.equal((await put('/api/mood', { day: moodDay, mood: 'Good' })).status, 204);
+  const body = 'Finished my check-in after midnight.';
+  const reflection = { body, version: Number(version), generation };
+  let saveDraft;
+  const editor = draftSaver({
+    read: () => reflection,
+    async write(value) { assert.equal((await put(endpoint, value)).status, 200); },
+    schedule(callback) { saveDraft = callback; },
+    cancel() {},
+    report() {}
+  });
+  editor.change();
+  assert.equal(await saveDraft(), true);
+  for (const path of [editLink, '/history?day=' + yesterday]) {
+    const reloaded = await requestPage(client, path);
+    assert.ok(reloaded.includes('data-habit="' + habit + '" checked'));
+    assert.match(reloaded, /name="mood" value="Good" checked/);
+    assert.ok(reloaded.includes(body));
+  }
+  assert.deepEqual(f.model.daily(today), todayBefore);
+  assert.ok(!(await requestPage(client, '/')).includes(body));
+  const journal = f.model.get('SELECT day,ciphertext FROM journals');
+  assert.equal(journal.day, yesterday);
+  assert.ok(!journal.ciphertext.includes(body));
+
+  for (const path of ['/?day=' + old, '/history?day=' + old]) {
+    const readOnly = await requestPage(client, path);
+    assert.match(readOnly, /data-habit="\d+"\s+disabled/);
+    assert.match(readOnly, /<fieldset disabled>/);
+    assert.doesNotMatch(readOnly, /data-editor|Edit daily reflection|Write a reflection/);
+  }
+  assert.equal((await put('/api/completions', { ...completion, day: old })).status, 403);
+  assert.equal((await put('/api/mood', { day: old, mood: 'Good' })).status, 403);
+  assert.equal((await put('/api/daily/' + old, reflection)).status, 403);
+});
+
 test('the daily check-in autosaves independently of habits and History searches all three writing types', async t => {
   const f = await fixture(t);
   const client = f.client();

@@ -1,11 +1,17 @@
 <%- include('partials/layout') %>
 <section class="intro check-in-intro">
   <div class="check-in-header">
-    <div><h1><%= day === today ? 'Today' : 'Daily check-in' %></h1>
-      <p class="eyebrow"><time datetime="<%= day %>"><%= dateLabel(day) %></time></p></div>
+    <div>
+      <% if (day === today) { %>
+        <h1>Today</h1>
+        <p class="eyebrow"><time datetime="<%= day %>"><%= dateLabel(day) %></time></p>
+      <% } else { %>
+        <h1><time datetime="<%= day %>"><%= dateLabel(day) %></time></h1>
+      <% } %>
+    </div>
     <a class="button" href="/notes/new">+ New Note</a>
   </div>
-  <%- include('partials/date-navigation', { showTodayShortcut: day !== today }) %>
+  <%- include('partials/date-navigation', { showTodayShortcut: day !== today, editYesterday }) %>
 </section>
 <div class="dashboard-grid check-in-grid">
   <%- include('partials/tracker', { daily, showCompleteNote: false, heading: day === today ? "Today's habits" : 'Daily habits' }) %>
@@ -14,19 +20,25 @@
     <div class="section-heading">
       <h2 id="reflection-heading">Quick reflection</h2>
     </div>
-    <p class="notice" data-journal-rollover role="status" hidden>This reflection keeps its date. <a href="/">Open today’s check-in</a></p>
-    <form method="post" class="form-stack" data-editor data-follows-today="<%= followsToday %>"
-      data-endpoint="/api/daily/<%= day %>" data-day="<%= day %>" data-version="<%= reflection.version %>"
-      data-generation="<%= generation %>">
-      <textarea class="field quick-reflection" name="body" rows="5" aria-labelledby="reflection-heading"
-        placeholder="What happened today? How are you feeling? Anything worth remembering?">
+    <% if (editable) { %>
+      <p class="notice" data-journal-rollover role="status" hidden>This reflection keeps its date. <a href="/">Open today’s check-in</a></p>
+      <form method="post" class="form-stack" data-editor data-follows-today="<%= followsToday %>"
+        data-endpoint="/api/daily/<%= day %>" data-day="<%= day %>" data-version="<%= reflection.version %>"
+        data-generation="<%= generation %>">
+        <textarea class="field quick-reflection" name="body" rows="5" aria-labelledby="reflection-heading"
+          placeholder="<%= day === today ? 'What happened today? How are you feeling? Anything worth remembering?' : 'What happened that day? How did you feel? Anything worth remembering?' %>">
 <%= reflection.body %></textarea>
-      <div class="actions editor-actions">
-        <button class="button" type="button" data-reload-entry hidden>Reload latest</button>
-        <button class="button compact" type="button" data-retry hidden>Retry</button>
-        <span class="status" role="status" data-status><%= reflection.version ? 'Saved' : 'Changes save automatically' %></span>
-      </div>
-    </form>
+        <div class="actions editor-actions">
+          <button class="button" type="button" data-reload-entry hidden>Reload latest</button>
+          <button class="button compact" type="button" data-retry hidden>Retry</button>
+          <span class="status" role="status" data-status><%= reflection.version ? 'Saved' : 'Changes save automatically' %></span>
+        </div>
+      </form>
+    <% } else if (reflection.version) { %>
+      <p class="entry-preview"><%= reflection.body %></p>
+    <% } else { %>
+      <p class="muted">No reflection recorded.</p>
+    <% } %>
   </section>
 </div>
 <div class="check-in-footer">

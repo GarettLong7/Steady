@@ -1,8 +1,9 @@
 <% const showToday = typeof showTodayShortcut === 'undefined' || showTodayShortcut; %>
-<% if (dates.previous || dates.next || showToday) { %>
+<% if (dates.previous || dates.next || showToday || editYesterday) { %>
 <nav class="date-navigation actions" aria-label="Browse dates">
-  <% if (dates.previous) { %><a class="button" href="<%= dates.previous %>">Previous day</a><% } %>
-  <% if (showToday) { %><a class="button" href="<%= dates.today %>">Today</a><% } %>
-  <% if (dates.next) { %><a class="button" href="<%= dates.next %>">Next day</a><% } %>
+  <% if (editYesterday) { %><a class="button" href="<%= editYesterday %>">Edit yesterday</a><% } %>
+  <% if (dates.previous && dates.previous !== editYesterday) { %><a class="button" href="<%= dates.previous %>">Previous day</a><% } %>
+  <% if (showToday) { %><a class="button" href="<%= dates.today %>">Back to Today</a><% } %>
+  <% if (dates.next && (!showToday || dates.next !== '/?day=' + today)) { %><a class="button" href="<%= dates.next %>">Next day</a><% } %>
 </nav>
 <% } %>

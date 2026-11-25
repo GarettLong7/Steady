@@ -113,6 +113,7 @@ export function createApp({ filename = resolve(process.env.STEADY_DATA_DIR || re
     }
   });
 
+  const singaporeDay = (date = new Date(model.now())) => localDay(date, 'Asia/Singapore');
   app.use((req, res, next) => {
     const activity = req.path !== '/api/session';
     const key = sessions.lookup(req, activity);
@@ -122,7 +123,9 @@ export function createApp({ filename = resolve(process.env.STEADY_DATA_DIR || re
     }
     req.key = key;
     model.migrateWriting(key);
-    req.today = model.today();
+    const now = new Date(model.now());
+    req.today = model.today(now);
+    req.yesterday = offset(singaporeDay(now), -1);
     model.materializeThrough(req.today);
     req.session.csrf ??= token();
     res.locals = { ...res.locals, csrf: req.session.csrf, today: req.today, path: req.path,
@@ -148,16 +151,22 @@ export function createApp({ filename = resolve(process.env.STEADY_DATA_DIR || re
       today: url()
     };
   };
-  const singaporeDay = () => localDay(new Date(model.now()), 'Asia/Singapore');
+  const canEditCheckIn = (req, day) => day === req.today || day === req.yesterday;
+  const requireEditableCheckIn = (req, day) => {
+    check(validDay(day) && day <= req.today, 'Choose a tracked date up to today.');
+    check(canEditCheckIn(req, day), 'Only today’s and yesterday’s check-ins can be edited.', 403);
+  };
   app.get('/', (req, res) => {
     const day = req.query.day ?? req.today;
     const first = model.meta('first');
-    model.requireDay(day, req.today);
+    model.requireDay(day, req.today, { allowMissingDay: day === req.yesterday });
     res.render('dashboard', {
-      title: 'Dashboard', day, daily: model.daily(day), stats: model.statistics(req.today),
+      title: 'Dashboard', day, daily: model.daily(day, { previewMissingPlan: day === req.yesterday }), stats: model.statistics(req.today),
       encouragement: encouragements[Math.floor(Date.parse(req.today) / 86400000) % encouragements.length],
       reflection: model.quickReflection(req.key, day, quickReflectionId(day)), generation: model.meta('generation'),
       followsToday: req.query.day === undefined, dates: dateLinks(day, req.today, first, '/'),
+      editable: canEditCheckIn(req, day),
+      editYesterday: day === req.today ? '/?day=' + req.yesterday : null,
       habitIcons: model.dashboardHabitIcons(day === req.today)
     });
   });
@@ -181,7 +190,7 @@ export function createApp({ filename = resolve(process.env.STEADY_DATA_DIR || re
     const day = req.query.day ?? (month === req.today.slice(0, 7) ? req.today : null);
     check(!day || validDay(day), 'Choose a valid date.');
     const tracked = day && day <= req.today && !!model.get('SELECT 1 FROM days WHERE day=?', day);
-    res.render('history', { title: 'History', day, calendar: model.calendar(month, req.today),
+    res.render('history', { title: 'History', day, editable: canEditCheckIn(req, day), calendar: model.calendar(month, req.today),
       daily: tracked ? model.daily(day) : null, quick: tracked ? model.quickReflection(req.key, day, quickReflectionId(day)) : null });
   });
   app.get('/statistics', (req, res) => {
@@ -225,11 +234,15 @@ export function createApp({ filename = resolve(process.env.STEADY_DATA_DIR || re
   });
   app.put('/api/completions', (req, res) => {
     const { day, habit, completed } = strings(req.body);
-    const daily = model.setCompletion(day, habit, completed, req.today);
+    requireEditableCheckIn(req, day);
+    const daily = model.setCompletion(day, habit, completed, req.today, { allowMissingPlan: day === req.yesterday });
     res.json({ ...daily, streak: model.statistics(req.today).current });
   });
   app.put('/api/mood', (req, res) => {
-    model.setMood(req.body?.day, req.body?.mood, req.today); res.sendStatus(204);
+    const { day, mood } = strings(req.body);
+    requireEditableCheckIn(req, day);
+    model.setMood(day, mood, req.today, { allowMissingDay: day === req.yesterday });
+    res.sendStatus(204);
   });
   app.post('/api/search', (req, res) => {
     const { day = '', q = '', type = '' } = strings(req.body);
@@ -239,10 +252,11 @@ export function createApp({ filename = resolve(process.env.STEADY_DATA_DIR || re
   });
   app.put('/api/daily/:day', (req, res) => {
     const day = req.params.day;
-    check(validDay(day), 'Choose a valid date.');
+    requireEditableCheckIn(req, day);
     const id = quickReflectionId(day);
     const { title } = model.quickReflection(req.key, day, id);
-    return res.json(model.saveJournal(req.key, id, { ...strings(req.body), day, mode: 'free', title }, req.today));
+    return res.json(model.saveJournal(req.key, id, { ...strings(req.body), day, mode: 'free', title }, req.today,
+      { allowMissingDay: day === req.yesterday }));
   });
   app.put('/api/monthly/:month', (req, res) =>
     res.json(model.saveMonthlyReflection(req.key, req.params.month,

@@ -1,5 +1,5 @@
-<form method="post" class="mood-form" data-mood data-day="<%= daily.day %>">
-  <fieldset>
+<form method="post" class="mood-form" <%= editable ? 'data-mood' : '' %> data-day="<%= daily.day %>">
+  <fieldset <%= editable ? '' : 'disabled' %>>
     <legend>Daily mood <span class="muted">(optional)</span></legend>
     <div class="mood-options">
       <% for (const mood of [...moods, '']) { %>

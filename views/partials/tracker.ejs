@@ -1,4 +1,4 @@
-<section class="<%= typeof embedded !== 'undefined' && embedded ? '' : 'panel ' %>tracker" data-tracker data-day="<%= daily.day %>">
+<section class="<%= typeof embedded !== 'undefined' && embedded ? '' : 'panel ' %>tracker" <%= editable ? 'data-tracker' : '' %> data-day="<%= daily.day %>">
   <div class="section-heading">
     <h2><%= heading %></h2>
     <span class="status" role="status" data-status></span>
@@ -8,7 +8,7 @@
   <div class="habit-list">
     <% for (const habit of daily.habits) { %>
       <label class="habit-row">
-        <input type="checkbox" data-habit="<%= habit.habit %>" <%= habit.completed ? 'checked' : '' %>>
+        <input type="checkbox" data-habit="<%= habit.habit %>" <%= habit.completed ? 'checked' : '' %><%= editable ? '' : ' disabled' %>>
         <% if (typeof habitIcons !== 'undefined') { %><%- include('habit-icon', { kind: habitIcons[habit.habit] }) %><% } %>
         <span class="habit-text"><strong><%= habit.name %></strong><span class="habit-description"><%= habit.description %></span></span>
         <span class="duration"><%= habit.minutes %> min</span>
@@ -23,7 +23,7 @@
       <% for (const habit of weeklyGoals) { %>
         <div class="weekly-goal-row">
           <label class="weekly-goal-label">
-            <input type="checkbox" data-habit="<%= habit.habit %>" <%= habit.completed ? 'checked' : '' %>>
+            <input type="checkbox" data-habit="<%= habit.habit %>" <%= habit.completed ? 'checked' : '' %><%= editable ? '' : ' disabled' %>>
             <span><%= habit.name %></span>
           </label>
           <span class="weekly-goal-count" data-week-progress="<%= habit.habit %>" aria-live="polite"><%= habit.weekly.completed %> / <%= habit.weekly.goal %> days this week</span>
@@ -38,7 +38,7 @@
       <summary>Optional activity</summary>
       <% for (const habit of restActivities) { %>
         <label class="habit-row optional-habit-row">
-          <input type="checkbox" data-habit="<%= habit.habit %>" <%= habit.completed ? 'checked' : '' %>>
+          <input type="checkbox" data-habit="<%= habit.habit %>" <%= habit.completed ? 'checked' : '' %><%= editable ? '' : ' disabled' %>>
           <% if (typeof habitIcons !== 'undefined') { %><%- include('habit-icon', { kind: habitIcons[habit.habit] }) %><% } %>
           <span class="habit-text"><strong><%= habit.name %></strong><span>Optional on this date</span></span>
           <span class="duration"><%= habit.minutes %> min</span>

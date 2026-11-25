@@ -39,6 +39,20 @@ const migration4 = readFileSync(new URL('../database/migrations/004.sql', import
 const migration5 = readFileSync(new URL('../database/migrations/005.sql', import.meta.url), 'utf8');
 const migration6 = readFileSync(new URL('../database/migrations/006.sql', import.meta.url), 'utf8');
 const backfillPlans = "INSERT INTO daily_plans SELECT day,habit,name,description,minutes,position,'daily',0,1 FROM snapshots";
+// A custom habit's first saved plan marks the earliest date it can be backfilled.
+const habitPlan = `
+  SELECT :day AS day,id AS habit,name,description,minutes,position,coalesce(kind,'daily') AS kind,
+    coalesce(target,0) AS target,
+    CASE WHEN kind IS NULL OR (kind='weekdays' AND (weekdays & :weekdayMask)<>0) THEN 1 ELSE 0 END AS scheduled
+  FROM habits LEFT JOIN habit_schedules s ON s.habit=habits.id
+  WHERE active=1 AND (:habit IS NULL OR id=:habit)
+    AND (:backdate=0 OR default_key<>'' OR EXISTS (
+      SELECT 1 FROM daily_plans p WHERE p.habit=habits.id AND p.day<=:day
+    ))
+`;
+const habitPlanInputs = (day, habit, backdate) => ({
+  day, habit, backdate: Number(backdate), weekdayMask: 1 << ((new Date(day).getUTCDay() + 6) % 7)
+});
 export const monthlyPrompts = [
   'What am I proud of this month?', 'What did I learn about myself?', 'What would I like to do differently next month?', 'Free writing (optional)'
 ];
@@ -159,7 +173,7 @@ export class SteadyModel {
     this.run('INSERT INTO metadata VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', key, JSON.stringify(value));
   }
 
-  today() { return localDay(new Date(this.now()), this.meta('settings').timezone); }
+  today(date = new Date(this.now())) { return localDay(date, this.meta('settings').timezone); }
 
   setup(credential) {
     this.transaction(() => {
@@ -180,14 +194,14 @@ export class SteadyModel {
     this.recordHabitPlans(day);
   }
 
-  recordHabitPlans(day, habit = null) {
-    const weekdayMask = 1 << ((new Date(day).getUTCDay() + 6) % 7);
-    this.run(`
-      INSERT INTO daily_plans SELECT ?,id,name,description,minutes,position,coalesce(kind,'daily'),coalesce(target,0),
-        CASE WHEN kind IS NULL OR (kind='weekdays' AND (weekdays & ?)<>0) THEN 1 ELSE 0 END
-      FROM habits LEFT JOIN habit_schedules s ON s.habit=habits.id
-      WHERE active=1 AND (? IS NULL OR habits.id=?)
-    `, day, weekdayMask, habit, habit);
+  recordCheckInDay(day) {
+    // A missing past date has no historical habit plans to copy.
+    this.run('INSERT INTO days VALUES (?) ON CONFLICT DO NOTHING', day);
+    if (day < this.meta('first')) this.setMeta('first', day);
+  }
+
+  recordHabitPlans(day, habit = null, backdate = false) {
+    this.run('INSERT INTO daily_plans ' + habitPlan, habitPlanInputs(day, habit, backdate));
     this.run(`INSERT INTO snapshots SELECT day,habit,name,description,minutes,position
       FROM daily_plans WHERE day=? AND scheduled=1 AND (? IS NULL OR habit=?)`, day, habit, habit);
   }
@@ -230,8 +244,8 @@ export class SteadyModel {
       AND ?=(SELECT max(day) FROM days) ON CONFLICT(day,habit) DO NOTHING`, today, today, today);
   }
 
-  requireDay(day, today) {
-    check(validDay(day) && day <= today && !!this.get('SELECT 1 FROM days WHERE day=?', day),
+  requireDay(day, today, { allowMissingDay = false } = {}) {
+    check(validDay(day) && day <= today && (allowMissingDay || !!this.get('SELECT 1 FROM days WHERE day=?', day)),
       'Choose a tracked date up to today.');
   }
 
@@ -339,16 +353,21 @@ export class SteadyModel {
       percentage: percent(row.done, row.total) }));
   }
 
-  daily(day) {
-    const habits = this.all(`
+  daily(day, { previewMissingPlan = false } = {}) {
+    let habits = this.all(`
       SELECT s.*, c.habit IS NOT NULL AS completed FROM snapshots s LEFT JOIN completions c USING(day,habit)
       WHERE day=? ORDER BY position,habit
     `, day);
-    const done = habits.filter(habit => habit.completed).length;
-    const optional = this.all(`
+    let optional = this.all(`
       SELECT p.*, c.habit IS NOT NULL AS completed FROM daily_plans p LEFT JOIN extra_completions c USING(day,habit)
       WHERE p.day=? AND p.scheduled=0 ORDER BY p.position,p.habit
     `, day);
+    if (previewMissingPlan && !habits.length && !optional.length) {
+      const preview = this.all(habitPlan + ' ORDER BY position,habit', habitPlanInputs(day, null, true));
+      habits = preview.filter(plan => plan.scheduled).map(plan => ({ ...plan, completed: 0 }));
+      optional = preview.filter(plan => !plan.scheduled).map(plan => ({ ...plan, completed: 0 }));
+    }
+    const done = habits.filter(habit => habit.completed).length;
     for (const habit of optional) {
       if (habit.kind !== 'weekly') continue;
       const start = weekStart(day);
@@ -358,29 +377,41 @@ export class SteadyModel {
         FROM daily_plans p LEFT JOIN extra_completions e USING(day,habit)
         WHERE p.habit=? AND p.kind='weekly' AND p.day BETWEEN ? AND ?
       `, habit.habit, start, day, habit.habit, start, day);
-      habit.weekly = progress;
+      habit.weekly = { ...progress, goal: progress.goal ?? habit.target };
     }
     return { day, habits, done, total: habits.length, percentage: percent(done, habits.length),
       optional, extraDone: optional.filter(habit => habit.completed).length,
       mood: this.get('SELECT mood FROM moods WHERE day=?', day)?.mood ?? '' };
   }
 
-  setCompletion(day, habit, completed, today) {
-    this.requireDay(day, today);
+  setCompletion(day, habit, completed, today, { allowMissingPlan = false } = {}) {
+    this.requireDay(day, today, { allowMissingDay: allowMissingPlan });
     check(Number.isSafeInteger(habit) && typeof completed === 'boolean', 'Invalid habit update.');
-    const plan = this.get('SELECT scheduled FROM daily_plans WHERE day=? AND habit=?', day, habit);
-    check(plan, 'This habit was not available on that date.', 404);
-    const table = plan.scheduled ? 'completions' : 'extra_completions';
-    if (completed) this.run('INSERT INTO ' + table + ' VALUES (?,?) ON CONFLICT DO NOTHING', day, habit);
-    else this.run('DELETE FROM ' + table + ' WHERE day=? AND habit=?', day, habit);
-    return this.daily(day);
+    return this.transaction(() => {
+      if (allowMissingPlan && completed && !this.get('SELECT 1 FROM daily_plans WHERE day=? LIMIT 1', day)) {
+        this.recordCheckInDay(day);
+        this.recordHabitPlans(day, null, true);
+      }
+      const plan = this.get('SELECT scheduled FROM daily_plans WHERE day=? AND habit=?', day, habit);
+      check(plan, 'This habit was not available on that date.', 404);
+      const table = plan.scheduled ? 'completions' : 'extra_completions';
+      if (completed) this.run('INSERT INTO ' + table + ' VALUES (?,?) ON CONFLICT DO NOTHING', day, habit);
+      else this.run('DELETE FROM ' + table + ' WHERE day=? AND habit=?', day, habit);
+      return this.daily(day);
+    });
   }
 
-  setMood(day, mood, today) {
-    this.requireDay(day, today);
+  setMood(day, mood, today, { allowMissingDay = false } = {}) {
+    this.requireDay(day, today, { allowMissingDay });
     check(mood === '' || moods.includes(mood), 'Choose a listed mood.');
-    if (mood) this.run('INSERT INTO moods VALUES (?,?) ON CONFLICT(day) DO UPDATE SET mood=excluded.mood', day, mood);
-    else this.run('DELETE FROM moods WHERE day=?', day);
+    if (!mood) {
+      this.run('DELETE FROM moods WHERE day=?', day);
+      return;
+    }
+    this.transaction(() => {
+      if (allowMissingDay) this.recordCheckInDay(day);
+      this.run('INSERT INTO moods VALUES (?,?) ON CONFLICT(day) DO UPDATE SET mood=excluded.mood', day, mood);
+    });
   }
 
   calendar(month, today) {
@@ -525,8 +556,8 @@ export class SteadyModel {
       { id, version: 0, title: 'Daily reflection', body: '' };
   }
 
-  saveJournal(key, id, input, today) {
-    this.requireDay(input.day, today);
+  saveJournal(key, id, input, today, { allowMissingDay = false } = {}) {
+    this.requireDay(input.day, today, { allowMissingDay });
     const { day, mode, version } = input;
     check(mode === 'guided' ? id === guidedId(day) : mode === 'free' && /^[a-f0-9]{32}$/.test(id), 'Invalid journal entry.');
     check(Number.isSafeInteger(version) && version >= 0, 'Invalid journal revision.');
@@ -545,6 +576,7 @@ export class SteadyModel {
       const modified = new Date(this.now()).toISOString();
       const updated = { id, day, mode, created: row?.created ?? modified, modified, version: version + 1 };
       const ciphertext = writeContent(updated, key, content);
+      if (allowMissingDay) this.recordCheckInDay(day);
       if (row) this.run('UPDATE journals SET ciphertext=?,modified=?,version=? WHERE id=?', ciphertext, modified, updated.version, id);
       else this.run('INSERT INTO journals VALUES (?,?,?,?,?,?,?)', id, day, mode, ciphertext, updated.created, modified, updated.version);
       return updated;
